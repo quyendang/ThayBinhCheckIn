@@ -19,12 +19,11 @@ function resolvePath(envVal: string | undefined, defaultRelative: string): strin
 }
 
 export const config = {
-  telegram: {
-    token:   requireEnv('TG_TOKEN'),
-    groupId: Number(requireEnv('TG_GROUP_ID')),
+  server: {
+    port: Number(process.env.PORT ?? 3000),
   },
+  apiKey: requireEnv('API_KEY'),
   zalo: {
     credentialsPath: resolvePath(process.env.ZALO_CREDENTIALS_PATH, 'credentials.json'),
   },
-  dataDir: resolvePath(process.env.DATA_DIR, 'data'),
 } as const;

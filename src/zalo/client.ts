@@ -1,6 +1,6 @@
 import { Zalo, LoginQRCallbackEventType } from 'zca-js';
 import type { LoginQRCallback } from 'zca-js';
-import { existsSync, readFileSync, writeFileSync, statSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, statSync, unlinkSync } from 'fs';
 import { imageSizeFromFile } from 'image-size/fromFile';
 import qrcode from 'qrcode-terminal';
 import { config } from '../config.js';
@@ -144,7 +144,7 @@ export async function getZaloApi(): Promise<ZaloAPI> {
   if (_api) return _api;
 
   if (!existsSync(config.zalo.credentialsPath)) {
-    throw new Error('Chưa có file credentials.json — hãy gửi /login trong Telegram để đăng nhập lần đầu.');
+    throw new Error('Chưa có file credentials.json — hãy truy cập /login để đăng nhập.');
   }
 
   const zalo = new Zalo(ZALO_OPTIONS);
@@ -170,4 +170,16 @@ export async function triggerQRLogin(hooks: QRLoginHooks = {}): Promise<ZaloAPI>
   const zalo = new Zalo(ZALO_OPTIONS);
   _api = await runQRLogin(zalo, hooks);
   return _api;
+}
+
+export function resetZaloApi(): void {
+  _api = null;
+}
+
+export function clearCredentialsFile(): void {
+  try {
+    if (existsSync(config.zalo.credentialsPath)) unlinkSync(config.zalo.credentialsPath);
+  } catch (err) {
+    console.warn('[Zalo] Failed to remove credentials file:', err);
+  }
 }

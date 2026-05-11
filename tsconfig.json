@@ -10,6 +10,11 @@
     "skipLibCheck": true,
     "sourceMap": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/index.ts",
+    "src/config.ts",
+    "src/zalo/client.ts",
+    "src/zalo/types.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
