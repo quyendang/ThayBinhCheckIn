@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { clearCredentialsFile, getZaloApi, resetZaloApi, triggerQRLogin } from './zalo/client.js';
+import { restoreCredsFromFirebase } from './zalo/credentials-store.js';
 import type { ZaloAPI } from './zalo/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -444,7 +445,10 @@ async function boot(): Promise<void> {
   console.log('║        Zalo REST Webservice         ║');
   console.log('╚══════════════════════════════════════╝');
 
-  // Khôi phục credentials từ env var (dùng cho cloud deploy như Koyeb)
+  // 1. Tự động khôi phục credentials từ Firebase (nếu có FIREBASE_SERVICE_ACCOUNT)
+  await restoreCredsFromFirebase();
+
+  // 2. Fallback: khôi phục từ env var ZALO_CREDENTIALS (cách thủ công cũ)
   const credsEnv = process.env.ZALO_CREDENTIALS;
   if (credsEnv && !existsSync(config.zalo.credentialsPath)) {
     try {

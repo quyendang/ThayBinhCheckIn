@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync, statSync, unlinkSync } from 'f
 import { imageSizeFromFile } from 'image-size/fromFile';
 import qrcode from 'qrcode-terminal';
 import { config } from '../config.js';
+import { backupCredsToFirebase } from './credentials-store.js';
 import type { ZaloAPI } from './types.js';
 
 const QR_IMAGE_PATH = '/tmp/zalo-qr.png';
@@ -120,6 +121,7 @@ async function runQRLogin(
 
       case LoginQRCallbackEventType.GotLoginInfo: {
         saveCredentials(event.data);
+        void backupCredsToFirebase();
         void hooks.onSuccess?.().catch((e: unknown) => console.error(e));
         break;
       }
