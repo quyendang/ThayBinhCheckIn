@@ -17,6 +17,17 @@ export async function backupCredsToFirebase(): Promise<void> {
   }
 }
 
+export async function deleteCredsFromFirebase(): Promise<void> {
+  const db = getAdminDb();
+  if (!db) return;
+  try {
+    await db.ref(FB_PATH).remove();
+    console.log('[Zalo] Credentials deleted from Firebase ✓');
+  } catch (err) {
+    console.error('[Zalo] Firebase credentials delete failed:', err);
+  }
+}
+
 export async function restoreCredsFromFirebase(): Promise<boolean> {
   const db = getAdminDb();
   if (!db || existsSync(config.zalo.credentialsPath)) return false;

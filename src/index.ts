@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { clearCredentialsFile, getZaloApi, resetZaloApi, triggerQRLogin } from './zalo/client.js';
-import { restoreCredsFromFirebase } from './zalo/credentials-store.js';
+import { deleteCredsFromFirebase, restoreCredsFromFirebase } from './zalo/credentials-store.js';
 import type { ZaloAPI } from './zalo/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -426,6 +426,7 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse): Promis
     stopListener();
     resetZaloApi();
     clearCredentialsFile();
+    void deleteCredsFromFirebase();
     loginState.inProgress = false;
     loginState.phase = 'idle';
     loginState.message = 'Đã đăng xuất và xóa credentials.';
