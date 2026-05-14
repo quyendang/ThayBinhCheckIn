@@ -1,8 +1,14 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'http';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { config } from './config.js';
 import { clearCredentialsFile, getZaloApi, resetZaloApi, triggerQRLogin } from './zalo/client.js';
 import type { ZaloAPI } from './zalo/types.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const DASHBOARD_HTML = path.join(PROJECT_ROOT, 'quickmsg-teacher.html');
 
 type LoginPhase = 'idle' | 'starting' | 'qr_ready' | 'scanned' | 'success' | 'error';
 type ThreadTypeNum = 0 | 1;
@@ -85,6 +91,7 @@ function loginPageHtml(state: LoginState): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="refresh" content="3" />
   <title>Zalo Login</title>
+  <script>if('${state.phase}'==='success')window.location.replace('/dashboard');</script>
 </head>
 <body style="font-family:ui-sans-serif,system-ui;padding:24px;">
   <h2>Zalo Login</h2>
@@ -378,6 +385,41 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse): Promis
     return;
   }
 
+  if (pathname === '/verify' && req.method === 'GET') {
+    if (!requireApiKey(req, res)) return;
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/credentials' && req.method === 'GET') {
+    if (!requireApiKey(req, res)) return;
+    if (!existsSync(config.zalo.credentialsPath)) {
+      return sendJson(res, 404, { ok: false, error: 'Chưa có credentials. Đăng nhập tại /login trước.' });
+    }
+    const content = readFileSync(config.zalo.credentialsPath, 'utf8');
+    const base64 = Buffer.from(content).toString('base64');
+    return sendJson(res, 200, { ok: true, base64, hint: 'Set ZALO_CREDENTIALS env var to this value to persist across restarts' });
+  }
+
+  if (pathname === '/zalo/start' && req.method === 'POST') {
+    if (!requireApiKey(req, res)) return;
+    if (!loginState.inProgress) void startQrLogin();
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === '/dashboard' && req.method === 'GET') {
+    try {
+      let html = readFileSync(DASHBOARD_HTML, 'utf8');
+      const fbCfgJson = JSON.stringify(config.firebase);
+      const injection = `<script>window.__FB_CONFIG__=${fbCfgJson};</script>`;
+      html = html.replace('</head>', injection + '</head>');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch {
+      sendJson(res, 404, { ok: false, error: 'Dashboard not found' });
+    }
+    return;
+  }
+
   if (pathname === '/logout' && req.method === 'POST') {
     if (!requireApiKey(req, res)) return;
     stopListener();
@@ -401,6 +443,17 @@ async function boot(): Promise<void> {
   console.log('╔══════════════════════════════════════╗');
   console.log('║        Zalo REST Webservice         ║');
   console.log('╚══════════════════════════════════════╝');
+
+  // Khôi phục credentials từ env var (dùng cho cloud deploy như Koyeb)
+  const credsEnv = process.env.ZALO_CREDENTIALS;
+  if (credsEnv && !existsSync(config.zalo.credentialsPath)) {
+    try {
+      writeFileSync(config.zalo.credentialsPath, Buffer.from(credsEnv, 'base64').toString('utf8'), 'utf8');
+      console.log('[Boot] Credentials restored from ZALO_CREDENTIALS env var');
+    } catch (err) {
+      console.warn('[Boot] Failed to restore credentials from env var:', err);
+    }
+  }
 
   try {
     await ensureLoggedInApi();

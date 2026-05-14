@@ -1,8 +1,11 @@
 {
-  "name": "zalo-tg",
+  "name": "thaybinhcheckin",
   "version": "1.0.0",
-  "description": "Zalo REST webservice wrapper based on zca-js",
+  "description": "Zalo dashboard for teacher attendance messaging",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

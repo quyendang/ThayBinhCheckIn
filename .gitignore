@@ -4,24 +4,22 @@ node_modules/
 # Build output
 dist/
 
-# Environment & secrets — KHÔNG commit các file này
+# Environment & secrets — KHÔNG commit
 .env
 credentials.json
+data
 *.json.bak
 
-# Dữ liệu runtime
-data/topics.json
-data/*.json
-tmp/
-
-# Logs
-*.log
-npm-debug.log*
+# Claude config
+.claude/
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 # Editor
 .vscode/
 .idea/
 logs/
+*.log
+npm-debug.log*

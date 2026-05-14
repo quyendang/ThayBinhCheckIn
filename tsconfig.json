@@ -7,14 +7,8 @@
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "sourceMap": true
+    "skipLibCheck": true
   },
-  "include": [
-    "src/index.ts",
-    "src/config.ts",
-    "src/zalo/client.ts",
-    "src/zalo/types.ts"
-  ],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

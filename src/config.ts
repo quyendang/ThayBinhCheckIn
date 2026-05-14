@@ -26,4 +26,9 @@ export const config = {
   zalo: {
     credentialsPath: resolvePath(process.env.ZALO_CREDENTIALS_PATH, 'credentials.json'),
   },
+  firebase: {
+    apiKey:      process.env.FIREBASE_API_KEY      ?? '',
+    authDomain:  process.env.FIREBASE_AUTH_DOMAIN  ?? '',
+    databaseURL: process.env.FIREBASE_DATABASE_URL ?? '',
+  },
 } as const;

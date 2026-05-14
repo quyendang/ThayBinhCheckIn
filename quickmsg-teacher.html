@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuickMsg · Trợ lý nhắn tin phụ huynh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<div id="toastContainer"></div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --ink:#1a0f0a;
+    --paper:#faf6f0;
+    --paper-2:#f3ebdd;
+    --line:#e5d9c3;
+    --line-2:#d4c4a8;
+    --accent:#c8462c;
+    --accent-2:#e87a4c;
+    --accent-3:#d4a017;
+    --ok:#3d6b3a;
+    --bad:#a8321f;
+    --warn:#b8761f;
+    --muted:#6b5d4d;
+    --shadow: 0 1px 0 rgba(26,15,10,.04), 0 8px 32px -12px rgba(26,15,10,.15);
+    --shadow-lg: 0 2px 0 rgba(26,15,10,.06), 0 24px 64px -20px rgba(26,15,10,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Inter Tight',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    overflow-x:hidden;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(200,70,44,.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(212,160,23,.04) 0%, transparent 50%);
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity:.035;z-index:1;
+  }
+  .app{max-width:1400px;margin:0 auto;padding:32px 40px 80px;position:relative;z-index:2}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:24px;border-bottom:1px solid var(--line);margin-bottom:32px;flex-wrap:wrap;gap:20px}
+  .brand{display:flex;align-items:baseline;gap:14px}
+  .brand-mark{width:44px;height:44px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:900;font-size:24px;font-style:italic;transform:rotate(-4deg);border-radius:4px;box-shadow:3px 3px 0 var(--accent);align-self:center}
+  .brand-name{font-family:'Fraunces',serif;font-weight:600;font-size:32px;letter-spacing:-.02em;line-height:1}
+  .brand-name em{font-style:italic;color:var(--accent);font-weight:500}
+  .brand-sub{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-top:6px}
+  .teacher-info{text-align:right;font-size:13px;color:var(--muted)}
+  .teacher-info strong{color:var(--ink);font-weight:600;display:block;font-size:14px}
+  .date-stamp{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-top:4px}
+  .tabs{display:flex;gap:0;margin-bottom:32px;border-bottom:2px solid var(--ink);flex-wrap:wrap}
+  .tab{padding:14px 24px;font-family:'Inter Tight',sans-serif;font-size:14px;font-weight:500;color:var(--muted);background:none;border:none;cursor:pointer;position:relative;transition:color .2s;font-feature-settings:'ss01'}
+  .tab .count{font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:6px;color:var(--accent);opacity:.7}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--ink);font-weight:600}
+  .tab.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:4px;background:var(--accent)}
+  .layout{display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:start}
+  @media(max-width:1100px){.layout{grid-template-columns:1fr}}
+  @media(max-width:640px){.app{padding:20px 16px 100px}.brand-name{font-size:24px}}
+  .class-bar{display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+  .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted)}
+  .class-chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{padding:8px 16px;background:var(--paper-2);border:1px solid var(--line);border-radius:100px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-feature-settings:'ss01'}
+  .chip:hover{border-color:var(--ink)}
+  .chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .chip .num{font-family:'JetBrains Mono',monospace;font-size:10px;opacity:.6;margin-left:4px}
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .search{flex:1;min-width:200px;position:relative}
+  .search input{width:100%;padding:11px 14px 11px 38px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;color:var(--ink);transition:all .15s}
+  .search input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+  .btn{padding:11px 18px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--ink)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{background:var(--bad);border-color:var(--bad)}
+  .btn.ghost{background:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .students{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px,1fr));gap:14px}
+  .student-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;position:relative;transition:all .2s;box-shadow:var(--shadow)}
+  .student-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--line-2)}
+  .student-card.marked-good{border-color:var(--ok);background:linear-gradient(to bottom right,#fff,#f0f5ed)}
+  .student-card.marked-bad{border-color:var(--bad);background:linear-gradient(to bottom right,#fff,#faf0ee)}
+  .student-card.marked-warn{border-color:var(--warn);background:linear-gradient(to bottom right,#fff,#faf5e8)}
+  .stu-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  .stu-avatar{width:40px;height:40px;border-radius:50%;background:var(--paper-2);display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:600;font-size:16px;color:var(--ink);flex-shrink:0;border:1px solid var(--line)}
+  .stu-info{flex:1;min-width:0}
+  .stu-name{font-weight:600;font-size:15px;margin-bottom:2px;line-height:1.3}
+  .stu-meta{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;display:flex;gap:8px;align-items:center}
+  .friend-status{display:inline-flex;align-items:center;gap:3px}
+  .friend-status.ok::before{content:'';width:6px;height:6px;background:var(--ok);border-radius:50%}
+  .friend-status.no::before{content:'';width:6px;height:6px;background:var(--warn);border-radius:50%}
+  .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .action{padding:8px 4px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;cursor:pointer;transition:all .12s;text-align:center;font-size:11px;font-weight:500;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+  .action:hover{transform:scale(1.04)}
+  .action .ico{font-size:18px;line-height:1}
+  .action.good.active{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .action.bad.active{background:var(--bad);color:#fff;border-color:var(--bad)}
+  .action.warn.active{background:var(--warn);color:#fff;border-color:var(--warn)}
+  .stu-note{margin-top:10px;font-size:12px;padding:8px 10px;background:var(--paper-2);border-radius:6px;border-left:2px solid var(--accent);color:var(--ink);font-style:italic;display:none}
+  .stu-note.show{display:block}
+  .side{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow);position:sticky;top:20px}
+  .side h3{font-family:'Fraunces',serif;font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px}
+  .side .sub{font-size:12px;color:var(--muted);margin-bottom:20px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+  .stat{text-align:center;padding:12px 6px;background:var(--paper-2);border-radius:8px;border:1px solid var(--line)}
+  .stat-num{font-family:'Fraunces',serif;font-size:24px;font-weight:600;line-height:1}
+  .stat-num.ok{color:var(--ok)}
+  .stat-num.bad{color:var(--bad)}
+  .stat-num.warn{color:var(--warn)}
+  .stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace}
+  .preview-box{background:#f7f7f5;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;color:var(--ink);margin-bottom:16px;white-space:pre-wrap;font-family:'Inter Tight',sans-serif;max-height:200px;overflow-y:auto}
+  .preview-empty{color:var(--muted);font-style:italic;text-align:center;padding:20px 0}
+  .send-area{border-top:1px solid var(--line);padding-top:16px}
+  .send-btn{width:100%;padding:16px;background:var(--ink);color:var(--paper);border:none;border-radius:10px;font-family:'Fraunces',serif;font-size:17px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 0 var(--accent)}
+  .send-btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--accent)}
+  .send-btn:active{transform:translateY(2px);box-shadow:0 0 0 var(--accent)}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:0 4px 0 var(--line-2);background:var(--muted)}
+  .tpl-list{display:grid;gap:12px}
+  .tpl-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;transition:all .15s}
+  .tpl-card:hover{border-color:var(--line-2);box-shadow:var(--shadow)}
+  .tpl-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+  .tpl-name{font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+  .tpl-tag{font-size:10px;padding:2px 8px;border-radius:100px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;font-family:'JetBrains Mono',monospace}
+  .tpl-tag.good{background:#e6efe3;color:var(--ok)}
+  .tpl-tag.bad{background:#f5e3e0;color:var(--bad)}
+  .tpl-tag.warn{background:#f5ebd9;color:var(--warn)}
+  .tpl-body{font-size:13px;color:var(--muted);line-height:1.6;background:var(--paper-2);padding:12px 14px;border-radius:8px;white-space:pre-wrap;border-left:3px solid var(--accent)}
+  .tpl-actions{display:flex;gap:8px;margin-top:12px}
+  .tpl-edit{width:100%;min-height:140px;padding:12px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;line-height:1.6;background:var(--paper);resize:vertical}
+  .tpl-edit:focus{outline:none;border-color:var(--accent)}
+  .var-help{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .var-chip{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 8px;background:var(--paper-2);border:1px dashed var(--line-2);border-radius:4px;cursor:pointer;color:var(--accent)}
+  .var-chip:hover{background:var(--accent-3);color:#fff;border-style:solid}
+  .history-list{display:grid;gap:8px}
+  .hist-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:13px}
+  .hist-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+  .hist-status{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .hist-status.fail{background:var(--bad)}
+  .hist-name{font-weight:600}
+  .hist-msg{color:var(--muted);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+  .modal-bg{position:fixed;inset:0;background:rgba(26,15,10,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--paper);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;border:1px solid var(--line);box-shadow:var(--shadow-lg)}
+  .modal h2{font-family:'Fraunces',serif;font-size:26px;font-weight:600;letter-spacing:-.02em;margin-bottom:8px}
+  .modal .lead{color:var(--muted);margin-bottom:20px;font-size:14px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;color:var(--muted)}
+  .field input,.field textarea,.field select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:#fff}
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--accent)}
+  .send-progress{text-align:center;padding:20px 0}
+  .progress-bar{height:6px;background:var(--paper-2);border-radius:100px;overflow:hidden;margin:16px 0}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .3s;border-radius:100px}
+  .log{background:#1a0f0a;color:#a8d8a0;font-family:'JetBrains Mono',monospace;font-size:11px;padding:14px;border-radius:8px;max-height:180px;overflow-y:auto;text-align:left;line-height:1.7}
+  .log .err{color:#f5a89a}
+  .log .info{color:#d4c4a8}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-mark{font-family:'Fraunces',serif;font-size:80px;font-style:italic;color:var(--line-2);line-height:1}
+  .empty p{margin-top:12px;font-size:14px}
+  .section{display:none}
+  .section.active{display:block}
+  .ribbon{position:fixed;bottom:0;left:0;right:0;background:var(--ink);color:var(--paper);padding:14px 24px;transform:translateY(100%);transition:transform .25s;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 -8px 32px rgba(0,0,0,.2)}
+  .ribbon.show{transform:translateY(0)}
+  .ribbon-info{font-family:'Fraunces',serif;font-size:18px}
+  .ribbon-info em{color:var(--accent-2);font-style:italic;font-weight:600}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--paper-2)}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+  .quick-add-card{border-style:dashed!important;cursor:pointer;display:flex!important;align-items:center;justify-content:center;min-height:130px;color:var(--muted);flex-direction:column;gap:8px}
+  .quick-add-card:hover{border-color:var(--accent)!important;color:var(--accent)!important}
+  /* Toast */
+  #toastContainer{position:fixed;top:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .toast{padding:10px 16px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);opacity:0;transform:translateX(20px);transition:all .25s;pointer-events:none;max-width:320px;line-height:1.4;font-family:'Inter Tight',sans-serif}
+  .toast.show{opacity:1;transform:translateX(0)}
+  .toast.ok{background:#e6efe3;color:var(--ok);border:1px solid #b8d4b3}
+  .toast.err{background:#faf0ee;color:var(--bad);border:1px solid #d4967f}
+  .toast.warn{background:#f5ebd9;color:var(--warn);border:1px solid #d4b87f}
+  .toast.info{background:#fff;color:var(--ink);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">Q</div>
+      <div>
+        <div class="brand-name">QuickMsg <em>·</em> Teacher</div>
+        <div class="brand-sub">Trợ lý nhắn tin phụ huynh qua Zalo</div>
+      </div>
+    </div>
+    <div class="teacher-info">
+      <strong id="teacherName">Giáo viên</strong>
+      <span id="teacherSub">Tiếng Anh</span>
+      <div class="date-stamp" id="dateStamp"></div>
+      <div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">
+        <button class="btn ghost" id="zaloStatusBtn" style="font-size:12px;padding:6px 12px">⏳ Zalo</button>
+        <button class="btn ghost" id="fbBtn" style="font-size:12px;padding:6px 12px">🔥 Firebase</button>
+        <button class="btn ghost" id="settingsBtn" style="font-size:12px;padding:6px 12px">⚙ Cài đặt</button>
+      </div>
+      <div id="fbStatus" style="font-family:'JetBrains Mono',monospace;font-size:10px;text-align:right;margin-top:4px;color:var(--muted)">Firebase: chưa kết nối</div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="check">📝 Điểm danh & Đánh giá</button>
+    <button class="tab" data-tab="templates">✉️ Mẫu tin nhắn <span class="count" id="tplCount"></span></button>
+    <button class="tab" data-tab="history">🕐 Lịch sử gửi <span class="count" id="histCount"></span></button>
+    <button class="tab" data-tab="students">👥 Quản lý lớp</button>
+  </nav>
+
+  <!-- SECTION 1: CHECK -->
+  <section class="section active" data-section="check">
+    <div class="class-bar">
+      <span class="section-label">Chọn lớp →</span>
+      <div class="class-chips" id="classChips"></div>
+    </div>
+    <div class="layout">
+      <main>
+        <div class="toolbar">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input id="searchInput" placeholder="Tìm học sinh theo tên..." />
+          </div>
+          <button class="btn ghost" id="clearAllBtn">↺ Xoá đánh dấu</button>
+          <button class="btn ghost" id="markAllGood">✓ Tất cả thuộc bài</button>
+        </div>
+        <div id="studentGrid" class="students"></div>
+      </main>
+
+      <aside class="side">
+        <h3>Bảng điều khiển</h3>
+        <div class="sub">Phiên · <span id="sessionDate"></span></div>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-num ok" id="statGood">0</div><div class="stat-lbl">Thuộc bài</div></div>
+          <div class="stat"><div class="stat-num bad" id="statBad">0</div><div class="stat-lbl">Không thuộc</div></div>
+          <div class="stat"><div class="stat-num warn" id="statWarn">0</div><div class="stat-lbl">Vi phạm</div></div>
+        </div>
+        <div class="section-label" style="margin-bottom:8px">Xem trước tin nhắn</div>
+        <div class="preview-box" id="previewBox">
+          <div class="preview-empty">Đánh dấu học sinh để xem mẫu tin nhắn sẽ được gửi</div>
+        </div>
+        <div class="send-area">
+          <button class="send-btn" id="sendBtn" disabled>
+            <span>Gửi qua Zalo</span>
+            <span id="sendCount" style="font-family:'JetBrains Mono',monospace;font-size:13px;opacity:.7">(0)</span>
+          </button>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em">
+            Tự động kết bạn nếu chưa kết nối
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SECTION 2: TEMPLATES -->
+  <section class="section" data-section="templates">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Fraunces',serif;font-size:28px;font-weight:600;letter-spacing:-.02em">Mẫu tin nhắn</h2>
+        <p style="color:var(--muted);font-size:13px;margin-top:4px">Chỉnh sửa nội dung gửi cho từng tình huống. Dùng biến để cá nhân hoá.</p>
+      </div>
+      <button class="btn primary" id="addTplBtn">+ Tạo mẫu mới</button>
+    </div>
+    <div class="var-help">
+      <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;align-self:center;margin-right:4px">Biến có sẵn:</span>
+      <span class="var-chip">{ten_hs}</span><span class="var-chip">{ten_ph}</span>
+      <span class="var-chip">{lop}</span><span class="var-chip">{ngay}</span>
+      <span class="var-chip">{diem}</span><span class="var-chip">{mon}</span>
+      <span class="var-chip">{ly_do}</span><span class="var-chip">{gv}</span>
+    </div>
+    <div id="tplList" class="tpl-list"></div>
+  </section>
+
+  <!-- SECTION 3: HISTORY -->
+  <section class="section" data-section="history">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Fraunces',serif;font-size:28px;font-weight:600;letter-spacing:-.02em">Lịch sử gửi tin</h2>
+        <p style="color:var(--muted);font-size:13px">Theo dõi các tin nhắn đã gửi qua API Zalo.</p>
+      </div>
+      <button class="btn ghost" id="clearHistBtn" style="color:var(--bad)">🗑 Xoá lịch sử</button>
+    </div>
+    <div id="histList" class="history-list"></div>
+  </section>
+
+  <!-- SECTION 4: STUDENTS -->
+  <section class="section" data-section="students">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h2 style="font-family:'Fraunces',serif;font-size:28px;font-weight:600;letter-spacing:-.02em">Danh sách lớp</h2>
+        <p style="color:var(--muted);font-size:13px;margin-top:4px">Thêm, sửa, xoá học sinh và phụ huynh.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="importBtn">📥 Nhập CSV</button>
+        <button class="btn" id="exportBtn">📤 Xuất CSV</button>
+        <button class="btn primary" id="addStuBtn">+ Thêm học sinh</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:20px;font-family:'JetBrains Mono',monospace">
+      Format CSV: <em>Tên học sinh, Lớp, Tên phụ huynh, SĐT Zalo</em> — mỗi dòng 1 học sinh, không cần header
+    </p>
+    <div id="manageList"></div>
+  </section>
+
+</div>
+
+<!-- SEND MODAL -->
+<div class="modal-bg" id="sendModal">
+  <div class="modal">
+    <h2>Đang gửi tin nhắn</h2>
+    <p class="lead" id="sendStatus">Đang khởi tạo phiên gửi qua Zalo API...</p>
+    <div class="send-progress">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)" id="progressText">0 / 0</div>
+    </div>
+    <div class="log" id="sendLog"></div>
+    <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" id="closeModalBtn">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTE MODAL -->
+<div class="modal-bg" id="noteModal">
+  <div class="modal" style="max-width:440px">
+    <h2 id="noteTitle">Ghi chú thêm</h2>
+    <p class="lead" id="noteSub">Nhập chi tiết để tin nhắn cá nhân hoá hơn.</p>
+    <div class="field">
+      <label>Lý do / Ghi chú</label>
+      <textarea id="noteInput" rows="3" placeholder="VD: nói chuyện riêng, không làm bài tập trang 45..."></textarea>
+    </div>
+    <div class="field" id="scoreField">
+      <label>Điểm số (nếu có)</label>
+      <input id="scoreInput" type="text" placeholder="VD: 4, 6.5..." />
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" id="noteCancelBtn">Huỷ</button>
+      <button class="btn primary" id="noteSaveBtn">Lưu & Áp dụng</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT MODAL -->
+<div class="modal-bg" id="stuModal">
+  <div class="modal">
+    <h2 id="stuModalTitle">Thêm học sinh</h2>
+    <p class="lead">Số điện thoại phụ huynh phải là số đã đăng ký Zalo.</p>
+    <div class="field"><label>Họ tên học sinh *</label><input id="stuName" placeholder="VD: Nguyễn Minh Anh" /></div>
+    <div class="field">
+      <label>Lớp *</label>
+      <select id="stuClass"></select>
+    </div>
+    <div class="field"><label>Họ tên phụ huynh</label><input id="parentName" placeholder="VD: Anh Hùng / Chị Lan" /></div>
+    <div class="field" id="parentPhoneField">
+      <label>SĐT Zalo phụ huynh *</label>
+      <input id="parentPhone" type="tel" placeholder="0987654321 hoặc gõ tên để tìm trong danh sách bạn bè" autocomplete="off" />
+      <div id="friendSelectedHint" style="display:none;margin-top:5px;font-size:11px;color:var(--ok);font-family:'JetBrains Mono',monospace;padding:4px 8px;background:#e6efe3;border-radius:4px"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" id="stuCancelBtn">Huỷ</button>
+      <button class="btn primary" id="stuSaveBtn">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal" style="max-width:440px">
+    <h2>Thông tin giáo viên</h2>
+    <p class="lead">Dùng để điền biến <code>{gv}</code> và <code>{mon}</code> trong mẫu tin nhắn.</p>
+    <div class="field"><label>Họ tên giáo viên</label><input id="setName" placeholder="VD: Cô Nguyễn Hồng Anh" /></div>
+    <div class="field"><label>Môn dạy</label><input id="setSubject" placeholder="VD: Tiếng Anh" /></div>
+    <div class="field"><label>Trường (không bắt buộc)</label><input id="setSchool" placeholder="VD: THCS Nguyễn Du" /></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" id="setCancel">Huỷ</button>
+      <button class="btn primary" id="setSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE STATUS MODAL -->
+<div class="modal-bg" id="fbModal">
+  <div class="modal" style="max-width:380px">
+    <h2>🔥 Firebase</h2>
+    <p class="lead" id="fbModalInfo">Đã kết nối.</p>
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center">
+      <button class="btn ghost" id="fbModalSignOut" style="color:var(--bad)">Đăng xuất</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="fbModalClose">Đóng</button>
+        <button class="btn primary" id="fbModalSync">↻ Đồng bộ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ZALO QR MODAL -->
+<div class="modal-bg" id="zaloQRModal">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <h2 style="margin-bottom:6px">Đăng nhập Zalo</h2>
+    <p class="lead" id="zaloQRStatus">Đang khởi tạo...</p>
+    <div id="zaloQRBox" style="margin:16px auto;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper-2);border-radius:12px;border:1px solid var(--line)">
+      <p style="color:var(--muted);font-size:13px">Nhấn "Bắt đầu" để tạo QR</p>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" id="zaloQRClose">Đóng</button>
+      <button class="btn primary" id="zaloQRStart">Bắt đầu →</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE LOGIN SCREEN -->
+<div id="firebaseLoginScreen" style="position:fixed;inset:0;background:var(--paper);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;background-image:radial-gradient(circle at 20% 0%,rgba(200,70,44,.06) 0%,transparent 50%),radial-gradient(circle at 80% 100%,rgba(212,160,23,.05) 0%,transparent 50%)">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:20px;padding:40px 36px;max-width:380px;width:100%;box-shadow:var(--shadow-lg);text-align:center">
+    <div style="width:52px;height:52px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:900;font-size:28px;font-style:italic;transform:rotate(-4deg);border-radius:6px;box-shadow:3px 3px 0 var(--accent);margin:0 auto 20px">Q</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px">QuickMsg <em style="color:var(--accent);font-style:italic">·</em> Teacher</h2>
+    <p id="fbLoginNote" style="color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:24px">Đang kiểm tra phiên đăng nhập...</p>
+    <input id="fbLoginEmail" type="email" placeholder="Email" autocomplete="email" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:var(--paper-2);margin-bottom:10px;outline:none;transition:border-color .15s;display:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" />
+    <input id="fbLoginPassword" type="password" placeholder="Mật khẩu" autocomplete="current-password" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:var(--paper-2);margin-bottom:10px;outline:none;transition:border-color .15s;display:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor=''" />
+    <div id="fbLoginError" style="display:none;color:var(--bad);font-size:12px;margin-bottom:10px;font-family:'JetBrains Mono',monospace;text-align:left;padding:8px 10px;background:#faf0ee;border-radius:6px"></div>
+    <button id="fbLoginBtn" style="width:100%;padding:14px;background:var(--ink);color:var(--paper);border:none;border-radius:10px;font-family:'Fraunces',serif;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 var(--accent);transition:all .2s;letter-spacing:-.01em;display:none">Đăng nhập →</button>
+  </div>
+</div>
+
+<!-- RIBBON -->
+<div class="ribbon" id="ribbon">
+  <div class="ribbon-info">Đã đánh dấu <em id="ribbonNum">0</em> học sinh</div>
+  <button class="btn primary" id="ribbonSend">Gửi ngay →</button>
+</div>
+
+<script>
+// ==================== API ====================
+const API_BASE = window.location.origin;
+let API_KEY = '';
+
+async function apiPost(endpoint, body) {
+  const r = await fetch(API_BASE + endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+async function zaloFindUser(phone) {
+  const r = await apiPost('/findUser', { phone });
+  if (!r.ok) throw new Error(r.error || 'Không tìm thấy tài khoản Zalo');
+  return r.data;
+}
+
+async function zaloSendFriendRequest(userId) {
+  return apiPost('/sendFriendRequest', {
+    userId,
+    message: 'Xin chào, tôi là giáo viên của con.',
+  });
+}
+
+async function zaloSendMessage(userId, text) {
+  const r = await apiPost('/sendMessage', {
+    threadId: String(userId),
+    threadType: 0,
+    payload: { msg: text },
+  });
+  if (!r.ok) throw new Error(r.error || 'Gửi tin nhắn thất bại');
+  return r.data;
+}
+
+// ==================== PERSISTENCE ====================
+const LS_STATE   = 'qm:state:v3';
+const LS_TEACHER = 'qm:teacher:v1';
+
+function loadTeacher() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_TEACHER) || 'null')
+      || { name: 'Giáo viên', subject: 'Tiếng Anh', school: '' };
+  } catch { return { name: 'Giáo viên', subject: 'Tiếng Anh', school: '' }; }
+}
+
+function loadSavedState() {
+  try {
+    const raw = localStorage.getItem(LS_STATE);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveState() {
+  localStorage.setItem(LS_STATE, JSON.stringify({
+    students:  state.students,
+    templates: state.templates,
+    history:   state.history.slice(-300),
+    classes:   state.classes,
+  }));
+}
+
+// ==================== DEFAULT DATA ====================
+const DEFAULT_CLASSES = ['7A1', '7A2', '8B3', '9C1'];
+
+const DEFAULT_TEMPLATES = [
+  {
+    id: 'tpl-good', name: 'Khen ngợi thuộc bài', type: 'good',
+    body: `Kính gửi {ten_ph},\nHôm nay em {ten_hs} (lớp {lop}) đã thuộc bài và tích cực phát biểu trong giờ {mon}. Cô ghi nhận và rất vui khi thấy con tiến bộ.\nMong gia đình tiếp tục động viên con duy trì phong độ.\nTrân trọng,\n{gv}`,
+  },
+  {
+    id: 'tpl-bad', name: 'Không thuộc bài', type: 'bad',
+    body: `Kính gửi {ten_ph},\nHôm nay {ngay}, em {ten_hs} (lớp {lop}) chưa thuộc bài cũ môn {mon}, điểm kiểm tra miệng: {diem}.\nĐề nghị phụ huynh nhắc nhở con học bài và làm bài tập đầy đủ trước khi đến lớp.\nTrân trọng,\n{gv}`,
+  },
+  {
+    id: 'tpl-warn', name: 'Vi phạm nề nếp', type: 'warn',
+    body: `Kính gửi {ten_ph},\nHôm nay {ngay}, em {ten_hs} (lớp {lop}) có vi phạm trong giờ {mon}: {ly_do}.\nCô đã nhắc nhở trên lớp. Mong phụ huynh phối hợp trao đổi với con để rút kinh nghiệm.\nTrân trọng,\n{gv}`,
+  },
+];
+
+// ==================== STATE ====================
+const saved = loadSavedState();
+let TEACHER = loadTeacher();
+
+let state = {
+  students:     saved?.students  ?? [],
+  templates:    saved?.templates ?? DEFAULT_TEMPLATES.map(t => ({ ...t })),
+  history:      saved?.history   ?? [],
+  classes:      saved?.classes   ?? [...DEFAULT_CLASSES],
+  marks:        {},
+  currentClass: '',
+  search:       '',
+};
+
+if (!state.currentClass || !state.classes.includes(state.currentClass)) {
+  state.currentClass = state.classes[0] ?? '';
+}
+
+// ==================== HELPERS ====================
+const $  = (sel, p = document) => p.querySelector(sel);
+const $$ = (sel, p = document) => [...p.querySelectorAll(sel)];
+
+const today = () => {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+};
+
+const initials = name =>
+  name.split(' ').slice(-2).map(n => n[0] ?? '').join('').toUpperCase();
+
+const escapeHtml = s =>
+  s.replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+const fillTemplate = (body, stu, mark) =>
+  body
+    .replaceAll('{ten_hs}', stu.name)
+    .replaceAll('{ten_ph}', stu.parent)
+    .replaceAll('{lop}',    stu.class)
+    .replaceAll('{ngay}',   today())
+    .replaceAll('{diem}',   mark?.score || '—')
+    .replaceAll('{mon}',    TEACHER.subject)
+    .replaceAll('{ly_do}',  mark?.note  || '(chưa ghi rõ)')
+    .replaceAll('{gv}',     TEACHER.name);
+
+// ==================== RENDER HEADER ====================
+function renderHeader() {
+  const n = $('#teacherName');
+  const s = $('#teacherSub');
+  if (n) n.textContent = TEACHER.name;
+  if (s) s.textContent = TEACHER.subject + (TEACHER.school ? ' · ' + TEACHER.school : '');
+}
+
+// ==================== RENDER CLASS CHIPS ====================
+function renderClassChips() {
+  const el = $('#classChips');
+  const chips = state.classes.map(c => {
+    const count = state.students.filter(s => s.class === c).length;
+    return `<div class="chip ${c === state.currentClass ? 'active' : ''}" data-class="${escapeHtml(c)}">Lớp ${escapeHtml(c)}<span class="num">${count}</span></div>`;
+  });
+  chips.push(`<div class="chip" id="addClassChip" style="border-style:dashed;color:var(--muted)">+ Thêm lớp</div>`);
+  el.innerHTML = chips.join('');
+  $$('.chip[data-class]', el).forEach(ch => {
+    ch.onclick = () => { state.currentClass = ch.dataset.class; renderAll(); };
+  });
+  $('#addClassChip').onclick = () => {
+    const name = prompt('Tên lớp mới (VD: 10A1):');
+    if (!name?.trim()) return;
+    const cls = name.trim().toUpperCase();
+    if (state.classes.includes(cls)) { alert('Lớp đã tồn tại'); return; }
+    state.classes.push(cls);
+    state.currentClass = cls;
+    saveState();
+    renderAll();
+  };
+}
+
+// ==================== RENDER STUDENTS ====================
+function renderStudents() {
+  const grid = $('#studentGrid');
+  const list = state.students
+    .filter(s => s.class === state.currentClass)
+    .filter(s => !state.search || s.name.toLowerCase().includes(state.search.toLowerCase()));
+
+  const cards = list.map(s => {
+    const mark = state.marks[s.id];
+    const cls  = mark ? `marked-${mark.type}` : '';
+    return `
+    <div class="student-card ${cls}" data-id="${s.id}">
+      <div class="stu-head">
+        <div class="stu-avatar">${initials(s.name)}</div>
+        <div class="stu-info">
+          <div class="stu-name">${escapeHtml(s.name)}</div>
+          <div class="stu-meta">
+            <span>${escapeHtml(s.phone)}</span>
+            <span class="friend-status ${s.friended ? 'ok' : 'no'}">${s.friended ? 'Zalo' : 'Chưa KB'}</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="action good ${mark?.type === 'good' ? 'active' : ''}" data-act="good" data-id="${s.id}">
+          <div class="ico">✓</div><div>Thuộc</div>
+        </div>
+        <div class="action bad ${mark?.type === 'bad' ? 'active' : ''}" data-act="bad" data-id="${s.id}">
+          <div class="ico">✕</div><div>Không thuộc</div>
+        </div>
+        <div class="action warn ${mark?.type === 'warn' ? 'active' : ''}" data-act="warn" data-id="${s.id}">
+          <div class="ico">⚠</div><div>Vi phạm</div>
+        </div>
+      </div>
+      ${mark && (mark.note || mark.score) ? `
+        <div class="stu-note show">
+          ${mark.score ? `Điểm: <strong>${escapeHtml(mark.score)}</strong>. ` : ''}${escapeHtml(mark.note || '')}
+        </div>` : ''}
+    </div>`;
+  });
+
+  // Quick-add card
+  cards.push(`
+    <div class="student-card quick-add-card" onclick="openAddStu()">
+      <div style="font-size:32px;line-height:1">+</div>
+      <div style="font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.1em">Thêm học sinh</div>
+    </div>`);
+
+  if (list.length === 0 && state.currentClass) {
+    grid.innerHTML = `
+      <div class="empty" style="grid-column:1/-1">
+        <div class="empty-mark">∅</div>
+        <p>Lớp ${escapeHtml(state.currentClass)} chưa có học sinh. Nhấn + để thêm.</p>
+      </div>` + cards[cards.length - 1];
+  } else {
+    grid.innerHTML = cards.join('');
+  }
+
+  $$('.action', grid).forEach(a => {
+    a.onclick = () => handleMark(a.dataset.id, a.dataset.act);
+  });
+}
+
+// ==================== RENDER STATS ====================
+function renderStats() {
+  const counts = { good: 0, bad: 0, warn: 0 };
+  Object.values(state.marks).forEach(m => counts[m.type]++);
+  $('#statGood').textContent = counts.good;
+  $('#statBad').textContent  = counts.bad;
+  $('#statWarn').textContent = counts.warn;
+  const total = counts.good + counts.bad + counts.warn;
+  $('#sendCount').textContent = `(${total})`;
+  $('#sendBtn').disabled = total === 0;
+  $('#ribbon').classList.toggle('show', total > 0);
+  $('#ribbonNum').textContent = total;
+}
+
+// ==================== RENDER PREVIEW ====================
+function renderPreview() {
+  const firstId = Object.keys(state.marks)[0];
+  const box = $('#previewBox');
+  if (!firstId) {
+    box.innerHTML = `<div class="preview-empty">Đánh dấu học sinh để xem mẫu tin nhắn sẽ được gửi</div>`;
+    return;
+  }
+  const stu  = state.students.find(s => s.id === firstId);
+  const mark = state.marks[firstId];
+  const tpl  = state.templates.find(t => t.type === mark.type);
+  if (!tpl) { box.textContent = 'Chưa có mẫu cho tình huống này.'; return; }
+  const filled = fillTemplate(tpl.body, stu, mark);
+  box.innerHTML = `<div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;margin-bottom:8px">→ ${escapeHtml(stu.parent)} (${escapeHtml(stu.phone)})</div>${escapeHtml(filled)}`;
+}
+
+// ==================== RENDER TEMPLATES ====================
+function renderTemplates() {
+  const BUILTIN = ['tpl-good', 'tpl-bad', 'tpl-warn'];
+  const list = $('#tplList');
+  list.innerHTML = state.templates.map(t => `
+    <div class="tpl-card" data-id="${t.id}">
+      <div class="tpl-head">
+        <div class="tpl-name">
+          ${escapeHtml(t.name)}
+          <span class="tpl-tag ${t.type}">${t.type === 'good' ? 'Tích cực' : t.type === 'bad' ? 'Cảnh báo' : 'Vi phạm'}</span>
+        </div>
+        <div class="tpl-actions">
+          <button class="btn ghost" data-edit="${t.id}">Sửa</button>
+          ${!BUILTIN.includes(t.id) ? `<button class="btn ghost" data-del="${t.id}" style="color:var(--bad)">Xoá</button>` : ''}
+        </div>
+      </div>
+      <div class="tpl-body" data-view="${t.id}">${escapeHtml(t.body)}</div>
+      <div data-edit-wrap="${t.id}" style="display:none">
+        <div class="field" style="margin-bottom:8px">
+          <label>Tên mẫu</label>
+          <input data-tname="${t.id}" value="${escapeHtml(t.name)}" />
+        </div>
+        <textarea class="tpl-edit" data-textarea="${t.id}">${escapeHtml(t.body)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+          <button class="btn" data-cancel="${t.id}">Huỷ</button>
+          <button class="btn primary" data-save="${t.id}">Lưu</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  $('#tplCount').textContent = state.templates.length;
+
+  $$('[data-edit]').forEach(b => b.onclick = () => {
+    const id = b.dataset.edit;
+    $(`[data-view="${id}"]`).style.display = 'none';
+    $(`[data-edit-wrap="${id}"]`).style.display = 'block';
+  });
+  $$('[data-cancel]').forEach(b => b.onclick = () => {
+    const id = b.dataset.cancel;
+    $(`[data-view="${id}"]`).style.display = 'block';
+    $(`[data-edit-wrap="${id}"]`).style.display = 'none';
+  });
+  $$('[data-save]').forEach(b => b.onclick = () => {
+    const id = b.dataset.save;
+    const tpl = state.templates.find(t => t.id === id);
+    if (!tpl) return;
+    tpl.body = $(`[data-textarea="${id}"]`).value;
+    const tn = $(`[data-tname="${id}"]`);
+    if (tn?.value.trim()) tpl.name = tn.value.trim();
+    saveState();
+    renderTemplates();
+  });
+  $$('[data-del]').forEach(b => b.onclick = () => {
+    if (!confirm('Xoá mẫu này?')) return;
+    state.templates = state.templates.filter(t => t.id !== b.dataset.del);
+    saveState();
+    renderTemplates();
+  });
+}
+
+// ==================== RENDER HISTORY ====================
+function renderHistory() {
+  $('#histCount').textContent = state.history.length;
+  const list = $('#histList');
+  if (!state.history.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-mark">⌛</div><p>Chưa có tin nhắn nào được gửi.</p></div>`;
+    return;
+  }
+  list.innerHTML = state.history.slice().reverse().map(h => `
+    <div class="hist-row">
+      <div class="hist-status ${h.status === 'ok' ? '' : 'fail'}"></div>
+      <div>
+        <div class="hist-name">${escapeHtml(h.studentName)} <span style="color:var(--muted);font-weight:400;font-size:12px">→ ${escapeHtml(h.parent)}</span></div>
+        <div class="hist-msg">${escapeHtml((h.message.split('\n')[1] || h.message).slice(0, 80))}...</div>
+      </div>
+      <div class="hist-time">${h.time}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${h.status === 'ok' ? 'var(--ok)' : 'var(--bad)'};text-transform:uppercase">${h.status === 'ok' ? 'Đã gửi' : 'Lỗi'}</div>
+    </div>
+  `).join('');
+}
+
+// ==================== RENDER MANAGE ====================
+function renderManage() {
+  if (!state.classes.length) {
+    $('#manageList').innerHTML = `<div class="empty"><div class="empty-mark">📚</div><p>Chưa có lớp nào. Nhấn "+ Thêm lớp" trên tab Điểm danh để bắt đầu.</p></div>`;
+    return;
+  }
+  $('#manageList').innerHTML = state.classes.map(c => {
+    const stus = state.students.filter(s => s.class === c);
+    return `
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <h3 style="font-family:'Fraunces',serif;font-size:20px">
+            Lớp ${escapeHtml(c)}
+            <span style="color:var(--muted);font-size:13px;font-weight:400">· ${stus.length} học sinh</span>
+          </h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="openAddStu('${escapeHtml(c)}')">+ Thêm</button>
+            <button class="btn ghost" style="color:var(--bad)" onclick="deleteClass('${escapeHtml(c)}')">Xoá lớp</button>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden">
+          ${stus.length === 0
+            ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Chưa có học sinh nào.</div>`
+            : stus.map((s, i) => `
+              <div style="display:grid;grid-template-columns:36px 1fr 160px 130px 80px auto;gap:12px;padding:10px 16px;align-items:center;${i < stus.length - 1 ? 'border-bottom:1px solid var(--line)' : ''};font-size:13px">
+                <div class="stu-avatar" style="width:32px;height:32px;font-size:13px">${initials(s.name)}</div>
+                <div><strong>${escapeHtml(s.name)}</strong></div>
+                <div style="color:var(--muted)">${escapeHtml(s.parent)}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px">${escapeHtml(s.phone)}</div>
+                <div><span class="friend-status ${s.friended ? 'ok' : 'no'}" style="font-size:11px;color:var(--muted)">${s.friended ? 'Đã KB' : 'Chưa KB'}</span></div>
+                <div style="display:flex;gap:4px">
+                  <button class="btn ghost" style="padding:5px 10px;font-size:12px" onclick="editStu('${s.id}')">Sửa</button>
+                  <button class="btn ghost" style="padding:5px 10px;font-size:12px;color:var(--bad)" onclick="deleteStu('${s.id}')">Xoá</button>
+                </div>
+              </div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderClassChips();
+  renderStudents();
+  renderStats();
+  renderPreview();
+}
+
+// ==================== MARK HANDLERS ====================
+function handleMark(id, type) {
+  const current = state.marks[id];
+  if (current?.type === type && !current.note && !current.score) {
+    delete state.marks[id];
+    saveState();
+    renderAll();
+    return;
+  }
+  if (type === 'good') {
+    state.marks[id] = { type: 'good' };
+    saveState();
+    renderAll();
+  } else {
+    openNoteModal(id, type);
+  }
+}
+
+let modalContext = null;
+function openNoteModal(id, type) {
+  const stu = state.students.find(s => s.id === id);
+  modalContext = { id, type };
+  $('#noteTitle').textContent = type === 'bad' ? 'Không thuộc bài' : 'Vi phạm nề nếp';
+  $('#noteSub').textContent = `${stu.name} · Có thể bỏ trống để dùng mẫu chung.`;
+  const existing = state.marks[id];
+  $('#noteInput').value = existing?.note || '';
+  $('#scoreInput').value = existing?.score || '';
+  $('#scoreField').style.display = type === 'bad' ? 'block' : 'none';
+  $('#noteModal').classList.add('show');
+  setTimeout(() => $('#noteInput').focus(), 50);
+}
+
+$('#noteCancelBtn').onclick = () => $('#noteModal').classList.remove('show');
+$('#noteSaveBtn').onclick = () => {
+  if (!modalContext) return;
+  state.marks[modalContext.id] = {
+    type:  modalContext.type,
+    note:  $('#noteInput').value.trim(),
+    score: $('#scoreInput').value.trim(),
+  };
+  saveState();
+  renderAll();
+  $('#noteModal').classList.remove('show');
+};
+
+// ==================== STUDENT MODAL ====================
+let editStuId = null;
+
+function openAddStu(cls) {
+  editStuId = null;
+  _pendingFriend = null;
+  setPhoneFieldHint(null);
+  $('#stuModalTitle').textContent = 'Thêm học sinh';
+  $('#stuName').value = '';
+  $('#parentName').value = '';
+  $('#parentPhone').value = '';
+  const target = cls || state.currentClass;
+  $('#stuClass').innerHTML = state.classes.map(c =>
+    `<option value="${escapeHtml(c)}" ${c === target ? 'selected' : ''}>Lớp ${escapeHtml(c)}</option>`
+  ).join('');
+  $('#stuModal').classList.add('show');
+  setTimeout(() => $('#stuName').focus(), 50);
+}
+
+function editStu(id) {
+  const s = state.students.find(x => x.id === id);
+  if (!s) return;
+  editStuId = id;
+  _pendingFriend = null;
+  setPhoneFieldHint(null);
+  $('#stuModalTitle').textContent = 'Sửa học sinh';
+  $('#stuName').value = s.name;
+  $('#parentName').value = s.parent;
+  $('#parentPhone').value = s.phone;
+  $('#stuClass').innerHTML = state.classes.map(c =>
+    `<option value="${escapeHtml(c)}" ${c === s.class ? 'selected' : ''}>Lớp ${escapeHtml(c)}</option>`
+  ).join('');
+  $('#stuModal').classList.add('show');
+  setTimeout(() => $('#stuName').focus(), 50);
+}
+
+function deleteStu(id) {
+  const s = state.students.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`Xoá học sinh "${s.name}"?`)) return;
+  state.students = state.students.filter(x => x.id !== id);
+  delete state.marks[id];
+  saveState();
+  renderManage();
+  renderAll();
+}
+
+function deleteClass(cls) {
+  const count = state.students.filter(s => s.class === cls).length;
+  const msg = count > 0
+    ? `Xoá lớp "${cls}" sẽ xoá luôn ${count} học sinh. Tiếp tục?`
+    : `Xoá lớp "${cls}"?`;
+  if (!confirm(msg)) return;
+  state.classes = state.classes.filter(c => c !== cls);
+  state.students = state.students.filter(s => s.class !== cls);
+  Object.keys(state.marks).forEach(id => {
+    if (!state.students.find(s => s.id === id)) delete state.marks[id];
+  });
+  if (state.currentClass === cls) state.currentClass = state.classes[0] ?? '';
+  saveState();
+  renderManage();
+  renderAll();
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type = 'info', duration = 4000) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  $('#toastContainer').appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => el.classList.add('show')); });
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+// ==================== AUTO ADD FRIEND ====================
+async function autoAddFriend(stu) {
+  if (!isOwner || (!stu.phone && !stu.userId)) return;
+
+  try {
+    // Lấy userId — ưu tiên cache, fallback tìm qua SĐT
+    if (!stu.userId) {
+      showToast(`🔍 Đang tìm Zalo PH của ${stu.name}…`, 'info', 6000);
+      const userData = await zaloFindUser(stu.phone);
+      const uid = userData?.userId ?? userData?.uid ?? userData?.id ?? userData?.uidFrom;
+      if (!uid) {
+        showToast(`⚠ Không tìm thấy Zalo: ${stu.phone}`, 'warn');
+        return;
+      }
+      stu.userId = String(uid);
+    }
+
+    // 2. Gửi yêu cầu kết bạn
+    await zaloSendFriendRequest(stu.userId);
+    stu.friended = true;
+
+    saveState();
+    fbPushStudent(stu).catch(() => {});
+    renderManage();
+    renderAll();
+    showToast(`✓ Đã gửi yêu cầu KB tới PH của ${stu.name}`, 'ok');
+  } catch (e) {
+    const msg = e.message?.includes('friend') || e.message?.includes('already')
+      ? `${stu.name}: đã là bạn bè hoặc đã gửi request`
+      : `${stu.name}: ${e.message}`;
+    showToast(`⚠ ${msg}`, 'warn');
+    // Nếu lỗi "đã là bạn bè" → vẫn đánh dấu friended
+    if (e.message?.includes('already') || e.message?.includes('friend')) {
+      stu.friended = true;
+      saveState();
+      renderManage();
+      renderAll();
+    }
+  }
+}
+
+// ==================== STUDENT MODAL ====================
+$('#stuCancelBtn').onclick = () => { $('#stuModal').classList.remove('show'); editStuId = null; _pendingFriend = null; setPhoneFieldHint(null); };
+$('#stuSaveBtn').onclick = () => {
+  const name  = $('#stuName').value.trim();
+  const phone = $('#parentPhone').value.trim().replace(/\D/g, '');
+  const selectedUserId   = _pendingFriend?.userId   || '';
+  const selectedFriended = _pendingFriend?.friended  ?? false;
+  _pendingFriend = null; // tiêu thụ xong → xóa
+
+  if (!name || (!phone && !selectedUserId)) {
+    alert('Vui lòng nhập tên và SĐT, hoặc chọn phụ huynh từ danh sách bạn bè Zalo');
+    return;
+  }
+  const cls = $('#stuClass').value;
+
+  let savedStu = null;
+  let phoneChanged = false;
+
+  if (editStuId) {
+    savedStu = state.students.find(x => x.id === editStuId);
+    if (savedStu) {
+      phoneChanged = savedStu.phone !== phone;
+      if (phoneChanged) { savedStu.friended = false; savedStu.userId = undefined; }
+      savedStu.name   = name;
+      savedStu.parent = $('#parentName').value.trim() || 'Phụ huynh';
+      savedStu.phone  = phone;
+      savedStu.class  = cls;
+    }
+  } else {
+    phoneChanged = true;
+    savedStu = {
+      id: 's-' + Date.now(),
+      name, class: cls,
+      parent: $('#parentName').value.trim() || 'Phụ huynh',
+      phone, friended: false,
+    };
+    state.students.push(savedStu);
+  }
+
+  // Nếu user chọn từ danh sách bạn bè Zalo → dùng thẳng userId, không cần findUser
+  if (savedStu && selectedUserId) {
+    savedStu.userId   = selectedUserId;
+    savedStu.friended = selectedFriended;
+    phoneChanged = false; // skip autoAddFriend (đã là bạn)
+  }
+
+  editStuId = null;
+  saveState();
+  $('#stuModal').classList.remove('show');
+  renderManage();
+  renderAll();
+
+  if (savedStu) fbPushStudent(savedStu).catch(() => {});
+  if (savedStu && phoneChanged) autoAddFriend(savedStu);
+};
+
+// ==================== CSV IMPORT / EXPORT ====================
+$('#importBtn').onclick = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv,.txt';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let imported = 0, skipped = 0;
+    for (const line of lines) {
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length < 4) { skipped++; continue; }
+      const [name, cls, parent, phone] = parts;
+      if (!name || !phone) { skipped++; continue; }
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (state.students.some(s => s.phone === cleanPhone)) { skipped++; continue; }
+      if (cls && !state.classes.includes(cls)) state.classes.push(cls);
+      state.students.push({
+        id: 's-' + Date.now() + '-' + imported,
+        name, class: cls || state.currentClass || '',
+        parent: parent || 'Phụ huynh',
+        phone: cleanPhone, friended: false,
+      });
+      imported++;
+    }
+    saveState();
+    renderManage();
+    renderAll();
+    alert(`Nhập xong: ${imported} học sinh mới · bỏ qua ${skipped} dòng (trùng SĐT hoặc thiếu dữ liệu)`);
+  };
+  input.click();
+};
+
+$('#exportBtn').onclick = () => {
+  const rows = state.students.map(s =>
+    [s.name, s.class, s.parent, s.phone].join(',')
+  );
+  const csv = rows.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `danhsach_${today().replaceAll('/', '-')}.csv`;
+  a.click();
+};
+
+// ==================== TABS ====================
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $$('.section').forEach(s => s.classList.remove('active'));
+  $(`[data-section="${t.dataset.tab}"]`).classList.add('active');
+  if (t.dataset.tab === 'templates') renderTemplates();
+  if (t.dataset.tab === 'history')   renderHistory();
+  if (t.dataset.tab === 'students')  renderManage();
+});
+
+$('#searchInput').oninput = e => { state.search = e.target.value; renderStudents(); };
+
+$('#clearAllBtn').onclick = () => {
+  if (!Object.keys(state.marks).length) return;
+  if (!confirm('Xoá tất cả đánh dấu trong phiên này?')) return;
+  state.marks = {};
+  saveState();
+  renderAll();
+};
+
+$('#markAllGood').onclick = () => {
+  state.students.filter(s => s.class === state.currentClass).forEach(s => {
+    if (!state.marks[s.id]) state.marks[s.id] = { type: 'good' };
+  });
+  saveState();
+  renderAll();
+};
+
+$$('.var-chip').forEach(c => c.onclick = () => {
+  navigator.clipboard?.writeText(c.textContent);
+  const orig = c.textContent;
+  c.textContent = '✓ Copy';
+  setTimeout(() => c.textContent = orig, 1000);
+});
+
+$('#addTplBtn').onclick = () => {
+  state.templates.push({
+    id: 'tpl-custom-' + Date.now(), name: 'Mẫu tuỳ chỉnh', type: 'warn',
+    body: 'Kính gửi {ten_ph},\nHôm nay em {ten_hs} ...\nTrân trọng,\n{gv}',
+  });
+  saveState();
+  renderTemplates();
+};
+
+$('#addStuBtn').onclick = () => openAddStu();
+
+$('#clearHistBtn').onclick = () => {
+  if (!state.history.length) return;
+  if (!confirm('Xoá toàn bộ lịch sử gửi?')) return;
+  state.history = [];
+  saveState();
+  renderHistory();
+};
+
+// ==================== SETTINGS ====================
+$('#settingsBtn').onclick = () => {
+  $('#setName').value    = TEACHER.name;
+  $('#setSubject').value = TEACHER.subject;
+  $('#setSchool').value  = TEACHER.school || '';
+  $('#settingsModal').classList.add('show');
+  setTimeout(() => $('#setName').focus(), 50);
+};
+$('#setCancel').onclick = () => $('#settingsModal').classList.remove('show');
+$('#setSave').onclick = () => {
+  TEACHER.name    = $('#setName').value.trim()    || TEACHER.name;
+  TEACHER.subject = $('#setSubject').value.trim() || TEACHER.subject;
+  TEACHER.school  = $('#setSchool').value.trim();
+  localStorage.setItem(LS_TEACHER, JSON.stringify(TEACHER));
+  renderHeader();
+  $('#settingsModal').classList.remove('show');
+};
+
+// ==================== SEND ====================
+async function doSend() {
+  const marked = Object.entries(state.marks);
+  if (!marked.length) return;
+
+  $('#sendModal').classList.add('show');
+  $('#progressFill').style.width = '0%';
+  $('#sendLog').innerHTML = '';
+  $('#closeModalBtn').disabled = true;
+
+  const log = txt => {
+    const el = $('#sendLog');
+    el.innerHTML += txt + '<br>';
+    el.scrollTop = el.scrollHeight;
+  };
+
+  const timeStr = () => new Date().toLocaleTimeString('vi-VN');
+  log(`<span class="info">[${timeStr()}] Khởi tạo · ${marked.length} tin nhắn</span>`);
+
+  let done = 0, ok = 0, fail = 0;
+
+  for (const [stuId, mark] of marked) {
+    const stu = state.students.find(s => s.id === stuId);
+    if (!stu) { fail++; done++; continue; }
+
+    const tpl = state.templates.find(t => t.type === mark.type);
+    if (!tpl) {
+      log(`<span class="err">✗ ${escapeHtml(stu.name)}: không có mẫu tin cho loại "${mark.type}"</span>`);
+      fail++; done++; continue;
+    }
+
+    const msg = fillTemplate(tpl.body, stu, mark);
+    $('#sendStatus').textContent = `Đang gửi cho ${stu.name}...`;
+
+    try {
+      // 1. Lấy userId — ưu tiên cache, fallback tìm qua SĐT
+      if (stu.userId) {
+        log(`<span class="info">— Dùng Zalo ID đã lưu (${escapeHtml(String(stu.userId))})</span>`);
+      } else {
+        if (!stu.phone) throw new Error('Không có Zalo ID hoặc SĐT để gửi tin');
+        log(`<span class="info">— Tìm ${escapeHtml(stu.name)} qua SĐT (${escapeHtml(stu.phone)})...</span>`);
+        const userData = await zaloFindUser(stu.phone);
+        const uid = userData?.userId ?? userData?.uid ?? userData?.id ?? userData?.uidFrom;
+        if (!uid) throw new Error('Không tìm thấy tài khoản Zalo với SĐT này');
+        stu.userId = String(uid);
+      }
+
+      // 2. Kết bạn nếu chưa
+      if (!stu.friended) {
+        log(`<span class="info">— Gửi yêu cầu kết bạn...</span>`);
+        await zaloSendFriendRequest(stu.userId).catch(() => {});
+        stu.friended = true;
+        log(`<span class="info">✓ Yêu cầu kết bạn đã gửi</span>`);
+      }
+
+      // 3. Gửi tin nhắn
+      await zaloSendMessage(stu.userId, msg);
+      log(`<span class="info">✓ Đã gửi → ${escapeHtml(stu.name)} · ${msg.length} ký tự</span>`);
+      // Đồng bộ trạng thái Zalo ngược lên Firebase
+      fbPushStudent(stu).catch(() => {});
+
+      state.history.push({
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + today(),
+        studentName: stu.name, parent: stu.parent, phone: stu.phone, message: msg, status: 'ok',
+      });
+      ok++;
+    } catch (err) {
+      log(`<span class="err">✗ ${escapeHtml(stu.name)}: ${escapeHtml(err.message)}</span>`);
+      state.history.push({
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + today(),
+        studentName: stu.name, parent: stu.parent, phone: stu.phone, message: msg, status: 'fail',
+      });
+      fail++;
+    }
+
+    done++;
+    $('#progressFill').style.width = (done / marked.length * 100) + '%';
+    $('#progressText').textContent = `${done} / ${marked.length}`;
+
+    // Delay giữa các tin — bỏ qua sau tin cuối
+    if (done < marked.length) {
+      const ms = 2500 + Math.random() * 2000; // 2.5 – 4.5 giây
+      const sec = (ms / 1000).toFixed(1);
+      log(`<span class="info">   ⏱ chờ ${sec}s trước tin tiếp theo…</span>`);
+      await new Promise(r => setTimeout(r, ms));
+    }
+  }
+
+  log(`<span class="info">──────────────────────────────</span>`);
+  log(`<span class="info">[${timeStr()}] Hoàn tất · ✓ ${ok} · ✗ ${fail}</span>`);
+  $('#sendStatus').textContent = `Hoàn tất · Thành công ${ok}/${marked.length}`;
+  $('#closeModalBtn').disabled = false;
+
+  state.marks = {};
+  saveState();
+  renderAll();
+}
+
+$('#sendBtn').onclick    = doSend;
+$('#ribbonSend').onclick = doSend;
+$('#closeModalBtn').onclick = () => $('#sendModal').classList.remove('show');
+
+// ==================== FIREBASE CORE ====================
+let fbApp  = null;
+let fbAuth = null;
+let fbDb   = null;
+let fbCfg  = null;
+
+function setFbStatus(text, ok) {
+  const el = $('#fbStatus');
+  if (!el) return;
+  el.textContent = 'Firebase: ' + text;
+  el.style.color = ok === true ? 'var(--ok)' : ok === false ? 'var(--bad)' : 'var(--muted)';
+}
+
+function fbInitApp() {
+  const cfg = window.__FB_CONFIG__;
+  if (!cfg?.apiKey) return false;
+  try {
+    try { fbApp = firebase.app(); } catch { fbApp = firebase.initializeApp(cfg); }
+    fbAuth = firebase.auth(fbApp);
+    fbDb   = firebase.database(fbApp);
+    return true;
+  } catch { return false; }
+}
+
+async function fbPull() {
+  if (!fbDb || !fbCfg?.path) throw new Error('Chưa khởi tạo Firebase');
+  setFbStatus('đang kéo dữ liệu...', null);
+  const snap = await fbDb.ref(fbCfg.path).get();
+  if (!snap.exists()) throw new Error('Không có dữ liệu tại: ' + fbCfg.path);
+  const classrooms = snap.val();
+  const newClasses = [], newStudents = [];
+  for (const [crId, cr] of Object.entries(classrooms)) {
+    if (!cr || typeof cr !== 'object') continue;
+    const className = cr.name || crId;
+    if (!newClasses.includes(className)) newClasses.push(className);
+    for (const [stuId, stu] of Object.entries(cr.students || {})) {
+      if (!stu || typeof stu !== 'object') continue;
+      const existing = state.students.find(s => s.fbStuId === stuId);
+      newStudents.push({
+        id: existing?.id || stuId, fbStuId: stuId, fbClassId: crId,
+        name: stu.name || '(chưa đặt tên)', class: className, avatar: stu.avatar || '',
+        parent:   existing?.parent   || stu.parentName  || '',
+        phone:    existing?.phone    || stu.parentPhone || '',
+        friended: existing?.friended || stu.zaloFriended || false,
+        userId:   existing?.userId   || stu.zaloUserId   || undefined,
+      });
+    }
+  }
+  newClasses.sort((a, b) => a.localeCompare(b, 'vi'));
+  state.classes  = newClasses;
+  state.students = newStudents;
+  if (!state.classes.includes(state.currentClass)) state.currentClass = state.classes[0] ?? '';
+  saveState();
+  setFbStatus(`${fbAuth?.currentUser?.email ?? '✓'} · ${newStudents.length} HS`, true);
+  renderAll();
+}
+
+async function fbPushStudent(stu) {
+  if (!fbDb || !fbCfg?.path || !stu.fbClassId || !stu.fbStuId) return;
+  const path = `${fbCfg.path}/${stu.fbClassId}/students/${stu.fbStuId}`;
+  const patch = {};
+  if (stu.parent) patch.parentName  = stu.parent;
+  if (stu.phone)  patch.parentPhone = stu.phone;
+  if (stu.userId) patch.zaloUserId  = stu.userId;
+  patch.zaloFriended = stu.friended ?? false;
+  await fbDb.ref(path).update(patch);
+}
+
+// ── Firebase status modal ──
+$('#fbBtn').onclick = () => {
+  const user = fbAuth?.currentUser;
+  if (!user) return;
+  $('#fbModalInfo').textContent = `${user.email}${isOwner ? ' · Quản trị viên' : ''}`;
+  $('#fbModal').classList.add('show');
+};
+$('#fbModalClose').onclick = () => $('#fbModal').classList.remove('show');
+$('#fbModalSync').onclick = async () => {
+  const btn = $('#fbModalSync');
+  btn.disabled = true; btn.textContent = '↻ Đang sync...';
+  try { await fbPull(); $('#fbModal').classList.remove('show'); }
+  catch (e) { alert('Lỗi sync: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '↻ Đồng bộ'; }
+};
+$('#fbModalSignOut').onclick = async () => {
+  if (!confirm('Đăng xuất Firebase? Zalo cũng sẽ bị đăng xuất.')) return;
+  if (isOwner) {
+    try { await fetch(API_BASE + '/logout', { method: 'POST', headers: { 'x-api-key': API_KEY } }); } catch {}
+  }
+  await fbAuth?.signOut().catch(() => {});
+  $('#fbModal').classList.remove('show');
+};
+
+// ==================== ZALO QR MODAL ====================
+let zaloQRPollTimer = null;
+
+async function openZaloQRModal() {
+  $('#zaloQRModal').classList.add('show');
+  try {
+    const r = await fetch(API_BASE + '/login/state');
+    const json = await r.json();
+    if (json.data?.phase === 'success') {
+      $('#zaloQRStatus').textContent = 'Zalo đang kết nối.';
+      $('#zaloQRBox').innerHTML = '<div style="font-size:48px;line-height:1">✓</div><p style="color:var(--ok);margin-top:8px">Đã đăng nhập</p>';
+      $('#zaloQRStart').style.display = 'none';
+      return;
+    }
+  } catch {}
+  $('#zaloQRStatus').textContent = 'Nhấn "Bắt đầu" để tạo mã QR Zalo.';
+  $('#zaloQRBox').innerHTML = '<p style="color:var(--muted);font-size:13px">Nhấn "Bắt đầu" để tạo QR</p>';
+  $('#zaloQRStart').style.display = '';
+}
+
+async function startZaloQRLogin() {
+  const btn = $('#zaloQRStart');
+  btn.disabled = true; btn.textContent = 'Đang tạo QR...';
+  try {
+    await fetch(API_BASE + '/zalo/start', { method: 'POST', headers: { 'x-api-key': API_KEY } });
+  } catch (e) {
+    $('#zaloQRStatus').textContent = 'Lỗi: ' + e.message;
+    btn.disabled = false; btn.textContent = 'Thử lại';
+    return;
+  }
+  clearInterval(zaloQRPollTimer);
+  zaloQRPollTimer = setInterval(pollZaloQR, 2000);
+}
+
+async function pollZaloQR() {
+  try {
+    const r = await fetch(API_BASE + '/login/state');
+    const json = await r.json();
+    const { phase, message } = json.data || {};
+    $('#zaloQRStatus').textContent = message || phase;
+    if (phase === 'qr_ready') {
+      $('#zaloQRBox').innerHTML = `<img src="${API_BASE}/login/qr?t=${Date.now()}" style="max-width:240px;border-radius:8px;border:1px solid var(--line)" />`;
+      $('#zaloQRStart').style.display = 'none';
+    } else if (phase === 'scanned') {
+      $('#zaloQRBox').innerHTML = '<div style="font-size:40px">📱</div><p style="color:var(--ok);margin-top:8px">Đã quét, đang xác nhận...</p>';
+    } else if (phase === 'success') {
+      clearInterval(zaloQRPollTimer);
+      $('#zaloQRBox').innerHTML = '<div style="font-size:48px;line-height:1">✓</div><p style="color:var(--ok);margin-top:8px">Đăng nhập thành công!</p>';
+      updateZaloStatusBtn();
+      setTimeout(() => $('#zaloQRModal').classList.remove('show'), 2000);
+    } else if (phase === 'error') {
+      clearInterval(zaloQRPollTimer);
+      $('#zaloQRStart').disabled = false; $('#zaloQRStart').textContent = 'Thử lại'; $('#zaloQRStart').style.display = '';
+    }
+  } catch {}
+}
+
+$('#zaloQRClose').onclick = () => { clearInterval(zaloQRPollTimer); $('#zaloQRModal').classList.remove('show'); };
+$('#zaloQRStart').onclick = startZaloQRLogin;
+
+async function updateZaloStatusBtn() {
+  const btn = $('#zaloStatusBtn');
+  if (!btn || !isOwner) return;
+  try {
+    const r = await fetch(API_BASE + '/login/state');
+    const json = await r.json();
+    if (json.data?.phase === 'success') {
+      btn.textContent = '🟢 Zalo';
+      btn.onclick = async () => {
+        if (!confirm('Đăng xuất Zalo?')) return;
+        const res = await fetch(API_BASE + '/logout', { method: 'POST', headers: { 'x-api-key': API_KEY } });
+        const data = await res.json();
+        if (data.ok) { updateZaloStatusBtn(); showToast('Đã đăng xuất Zalo', 'ok'); }
+        else showToast('Lỗi: ' + (data.error || '?'), 'err');
+      };
+    } else {
+      btn.textContent = '⭕ Zalo';
+      btn.onclick = openZaloQRModal;
+    }
+  } catch { if (btn) btn.textContent = '❓ Zalo'; }
+}
+
+// ==================== FRIENDS AUTOCOMPLETE ====================
+let cachedFriends = null;
+// Module-level: lưu friend được chọn từ dropdown (reset mỗi lần mở modal)
+let _pendingFriend = null; // { userId, friended }
+
+async function loadFriends() {
+  if (cachedFriends !== null) return cachedFriends;
+  try {
+    const r = await apiPost('/getAllFriends', {});
+    cachedFriends = r.ok && Array.isArray(r.data) ? r.data : [];
+  } catch { cachedFriends = []; }
+  return cachedFriends;
+}
+
+function setupFriendsAutocomplete() {
+  if (!isOwner) return;
+  const phoneInput = $('#parentPhone');
+  const field = $('#parentPhoneField');
+  if (!phoneInput || !field) return;
+  if (field.querySelector('#friendsDropdown')) return;
+
+  field.style.position = 'relative';
+  const dropdown = document.createElement('div');
+  dropdown.id = 'friendsDropdown';
+  dropdown.style.cssText = 'position:absolute;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-lg);max-height:220px;overflow-y:auto;z-index:200;width:100%;top:calc(100% + 4px);left:0;display:none';
+  field.appendChild(dropdown);
+
+  let friends = [];
+
+  phoneInput.addEventListener('focus', async () => {
+    friends = await loadFriends();
+    renderFriendsDropdown(dropdown, friends, phoneInput.value);
+  });
+  phoneInput.addEventListener('input', () => {
+    _pendingFriend = null; // user tự nhập → bỏ selection cũ
+    setPhoneFieldHint(null);
+    renderFriendsDropdown(dropdown, friends, phoneInput.value);
+  });
+  phoneInput.addEventListener('blur', () => {
+    setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+  });
+}
+
+function setPhoneFieldHint(friend) {
+  const hint = $('#friendSelectedHint');
+  if (!hint) return;
+  if (friend) {
+    hint.textContent = `✓ Đã chọn: ${friend.name}${friend.hasPhone ? '' : ' · Chỉ có Zalo ID'}`;
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function renderFriendsDropdown(dropdown, friends, query) {
+  const phoneInput = $('#parentPhone');
+  const q = query.toLowerCase().replace(/\D/g, '') || query.toLowerCase();
+  const filtered = friends.filter(f => {
+    if (!q) return true;
+    const name  = (f.displayName || '').toLowerCase();
+    const phone = (f.phoneNumber || '').replace(/\D/g, '');
+    return name.includes(q) || phone.includes(q);
+  }).slice(0, 25);
+  if (!filtered.length) { dropdown.style.display = 'none'; return; }
+
+  dropdown.innerHTML = filtered.map(f => {
+    const uid   = escapeHtml(f.userId || '');
+    const phone = escapeHtml(f.phoneNumber || '');
+    const name  = escapeHtml(f.displayName || '');
+    const init  = escapeHtml((f.displayName || '?')[0]);
+    return `
+    <div data-uid="${uid}" data-phone="${phone}" data-name="${name}"
+      style="padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;border-bottom:1px solid var(--paper-2)">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--paper-2);display:grid;place-items:center;font-size:12px;font-weight:600;flex-shrink:0;overflow:hidden">
+        ${f.avatar ? `<img src="${escapeHtml(f.avatar)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='${init}'">` : init}
+      </div>
+      <div style="min-width:0">
+        <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+        ${f.phoneNumber
+          ? `<div style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px">${phone}</div>`
+          : '<div style="color:var(--muted);font-size:10px;font-style:italic">Chỉ có Zalo ID</div>'}
+      </div>
+    </div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+
+  dropdown.querySelectorAll('[data-uid]').forEach(item => {
+    item.onmouseover = () => { item.style.background = 'var(--paper-2)'; };
+    item.onmouseout  = () => { item.style.background = ''; };
+    item.onmousedown = (e) => {
+      e.preventDefault();
+      const uid   = item.dataset.uid;
+      const phone = item.dataset.phone;
+      const name  = item.dataset.name;
+      // Lưu vào module-level variable — không dùng dataset tránh bị reset
+      _pendingFriend = { userId: uid, friended: true, hasPhone: !!phone };
+      if (phone && phoneInput) phoneInput.value = phone;
+      const pn = $('#parentName');
+      if (pn && name) pn.value = name;
+      setPhoneFieldHint(_pendingFriend ? { name, hasPhone: !!phone } : null);
+      dropdown.style.display = 'none';
+    };
+  });
+}
+
+// ==================== AUTH FLOW ====================
+let isOwner = false;
+let currentUser = null;
+
+function applyPermissions() {
+  const ownerOnlyTabs = ['check', 'templates', 'history'];
+  if (isOwner) {
+    ownerOnlyTabs.forEach(t => { const el = $(`.tab[data-tab="${t}"]`); if (el) el.style.display = ''; });
+    $('#zaloStatusBtn').style.display = '';
+    $('#sendBtn').closest('.send-area').style.display = '';
+    setupFriendsAutocomplete();
+  } else {
+    ownerOnlyTabs.forEach(t => { const el = $(`.tab[data-tab="${t}"]`); if (el) el.style.display = 'none'; });
+    $('#zaloStatusBtn').style.display = 'none';
+    const sa = $('#sendBtn').closest('.send-area');
+    if (sa) sa.style.display = 'none';
+    // Switch to students tab
+    $$('.tab').forEach(t => t.classList.remove('active'));
+    $$('.section').forEach(s => s.classList.remove('active'));
+    const st = $('.tab[data-tab="students"]');
+    if (st) { st.classList.add('active'); $('[data-section="students"]').classList.add('active'); renderManage(); }
+  }
+}
+
+async function onFirebaseLogin(user) {
+  currentUser = user;
+  API_KEY = user.uid;
+  // Check owner
+  try {
+    const r = await fetch(API_BASE + '/verify', { headers: { 'x-api-key': API_KEY } });
+    isOwner = (await r.json()).ok === true;
+  } catch { isOwner = false; }
+  // Set Firebase path
+  fbCfg = { ...window.__FB_CONFIG__, path: `users/${user.uid}/classrooms` };
+  // Hide login screen
+  $('#firebaseLoginScreen').style.display = 'none';
+  applyPermissions();
+  init();
+  fbPull().catch(e => setFbStatus('lỗi pull: ' + e.message, false));
+}
+
+function showFirebaseLoginForm() {
+  const note = $('#fbLoginNote'), email = $('#fbLoginEmail'), pw = $('#fbLoginPassword'), btn = $('#fbLoginBtn');
+  note.textContent = 'Đăng nhập bằng tài khoản Firebase.';
+  [email, pw, btn].forEach(el => { el.style.display = ''; });
+  $('#firebaseLoginScreen').style.display = 'flex';
+  setTimeout(() => email.focus(), 100);
+}
+
+$('#fbLoginBtn').onclick = async () => {
+  const email = $('#fbLoginEmail').value.trim();
+  const pw    = $('#fbLoginPassword').value;
+  if (!email || !pw) return;
+  const btn = $('#fbLoginBtn');
+  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+  $('#fbLoginError').style.display = 'none';
+  try {
+    await fbAuth.signInWithEmailAndPassword(email, pw);
+    $('#fbLoginPassword').value = '';
+    // onAuthStateChanged handles the rest
+  } catch (e) {
+    const msg = (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+      ? 'Email hoặc mật khẩu không đúng'
+      : e.code === 'auth/too-many-requests' ? 'Quá nhiều lần thử, thử lại sau'
+      : e.message;
+    const err = $('#fbLoginError');
+    err.textContent = '⚠ ' + msg;
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+  }
+};
+$('#fbLoginPassword').onkeydown = e => { if (e.key === 'Enter') $('#fbLoginBtn').click(); };
+
+function startFirebaseAuth() {
+  if (!fbInitApp()) {
+    $('#fbLoginNote').textContent = '⚠ Server chưa cấu hình Firebase.';
+    $('#firebaseLoginScreen').style.display = 'flex';
+    return;
+  }
+  fbAuth.onAuthStateChanged(async user => {
+    if (user) {
+      await onFirebaseLogin(user);
+    } else {
+      showFirebaseLoginForm();
+    }
+  });
+}
+
+// ==================== INIT ====================
+function init() {
+  const d = new Date();
+  const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+  $('#dateStamp').textContent = `${days[d.getDay()]} · ${today()}`;
+  $('#sessionDate').textContent = today();
+  renderHeader();
+  renderAll();
+  if (isOwner) updateZaloStatusBtn();
+}
+
+startFirebaseAuth();
+</script>
+</body>
+</html>
