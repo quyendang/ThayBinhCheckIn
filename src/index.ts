@@ -349,12 +349,9 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse): Promis
   }
 
   if (pathname === '/') {
-    return sendJson(res, 200, {
-      ok: true,
-      service: 'zalo-webservice',
-      loginUrl: '/login',
-      protectedApi: 'Use x-api-key header',
-    });
+    res.writeHead(302, { Location: '/dashboard' });
+    res.end();
+    return;
   }
 
   if (pathname === '/login' && req.method === 'GET') {
